@@ -9,6 +9,7 @@ permissions:
   actions: read
   pull-requests: write
   issues: write
+  contents: read
 
 jobs:
   request-copilot-fix:
@@ -26,6 +27,10 @@ jobs:
             const run = context.payload.workflow_run;
             const runId = run.id;
             const runUrl = run.html_url;
+            const headBranch = run.head_branch;
+            const headSha = run.head_sha;
+
+            core.info(`Processing workflow run ${runId} for branch ${headBranch} (${headSha})`);
 
             const prs = run.pull_requests || [];
             if (prs.length === 0) {
@@ -33,34 +38,53 @@ jobs:
               return;
             }
 
+            core.info(`Found ${prs.length} PR(s) associated with this run`);
+
             // Traer jobs del workflow_run y resumir fallas
-            const jobsResp = await github.rest.actions.listJobsForWorkflowRun({
-              owner,
-              repo,
-              run_id: runId,
-              per_page: 100,
-            });
+            let jobsResp;
+            try {
+              jobsResp = await github.rest.actions.listJobsForWorkflowRun({
+                owner,
+                repo,
+                run_id: runId,
+                per_page: 100,
+              });
+            } catch (error) {
+              core.warning(`Failed to list jobs: ${error.message}`);
+              jobsResp = { data: { jobs: [] } };
+            }
 
             const failedJobs = (jobsResp.data.jobs || [])
               .filter(j => j.conclusion === "failure" || j.conclusion === "cancelled" || j.conclusion === "timed_out")
               .map(j => ({
                 name: j.name,
                 conclusion: j.conclusion,
-                url: j.html_url
+                url: j.html_url,
+                started_at: j.started_at,
+                completed_at: j.completed_at
               }));
+
+            core.info(`Found ${failedJobs.length} failed job(s)`);
 
             const marker = `<!-- copilot-autofix:${runId} -->`;
 
             for (const pr of prs) {
               const issue_number = pr.number;
+              core.info(`Processing PR #${issue_number}`);
 
               // Evitar comentar 2 veces por el mismo run
-              const comments = await github.rest.issues.listComments({
-                owner,
-                repo,
-                issue_number,
-                per_page: 100,
-              });
+              let comments;
+              try {
+                comments = await github.rest.issues.listComments({
+                  owner,
+                  repo,
+                  issue_number,
+                  per_page: 100,
+                });
+              } catch (error) {
+                core.error(`Failed to list comments for PR #${issue_number}: ${error.message}`);
+                continue;
+              }
 
               const already = comments.data.some(c => (c.body || "").includes(marker));
               if (already) {
@@ -69,33 +93,76 @@ jobs:
               }
 
               const failedList = failedJobs.length
-                ? failedJobs.map(j => `- **${j.name}** (${j.conclusion}) — ${j.url}`).join("\n")
+                ? failedJobs.map(j => `- **${j.name}** (${j.conclusion}) — [Ver logs](${j.url})`).join("\n")
                 : "- (No se pudieron listar jobs fallidos; revisa el run.)";
+
+              // Obtener información adicional del PR
+              let prDetails;
+              try {
+                prDetails = await github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: issue_number,
+                });
+              } catch (error) {
+                core.warning(`Could not fetch PR details: ${error.message}`);
+                prDetails = null;
+              }
+
+              const prInfo = prDetails ? `
+            **Información del PR:**
+            - Branch: \`${prDetails.data.head.ref}\`
+            - Commit: \`${headSha.substring(0, 7)}\`
+            - Archivos modificados: ${prDetails.data.changed_files}
+            - Líneas añadidas: +${prDetails.data.additions} / Líneas eliminadas: -${prDetails.data.deletions}
+            ` : '';
 
               const body = `${marker}
             @copilot
 
-            Los checks de CI fallaron. Por favor:
-            1) Identifica la **causa raíz** (no solo "workarounds").
-            2) Corrige el error, agrega/ajusta tests si aplica.
-            3) Empuja commits **a esta misma rama del PR** para que CI vuelva a correr.
+            🔴 **Los checks de CI fallaron** en el workflow [${run.name}](${runUrl})
+
+            **Por favor, ayúdame a:**
+            1. **Analizar los logs de los jobs fallidos** para identificar la causa raíz
+            2. **Corregir el error** de forma quirúrgica (cambios mínimos necesarios)
+            3. **Validar la solución** y agregar/ajustar tests si es necesario
+            4. **Hacer commit y push** de los cambios a esta misma rama del PR
 
             **Workflow run:** ${runUrl}
 
-            **Jobs fallidos (links directos):**
+            **Jobs fallidos:**
             ${failedList}
-
+            ${prInfo}
             **Contexto adicional:**
-            - No deshabilites checks ni ignores fallas.
-            - Mantén cambios mínimos y enfocados.
+            - ❌ No deshabilites checks ni ignores warnings/errores
+            - ✅ Mantén cambios mínimos y enfocados en el problema
+            - ✅ Asegúrate de que la solución no rompa funcionalidad existente
+            - ✅ Agrega comentarios solo si son necesarios para explicar lógica compleja
+
+            <details>
+            <summary>📋 Instrucciones detalladas</summary>
+
+            1. **Analiza los logs**: Haz clic en los links de los jobs fallidos arriba
+            2. **Identifica el error**: Busca mensajes de error, stack traces, o warnings
+            3. **Reproduce localmente** (si es posible): \`git checkout ${headBranch}\`
+            4. **Implementa la corrección**: Edita solo los archivos necesarios
+            5. **Valida**: Ejecuta build/tests localmente si es posible
+            6. **Commit y push**: Los cambios deben ir a la rama \`${headBranch}\`
+
+            </details>
             `;
 
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number,
-                body,
-              });
-
-              core.info(`Posted @copilot autofix request to PR #${issue_number}`);
+              try {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number,
+                  body,
+                });
+                core.info(`✅ Posted @copilot autofix request to PR #${issue_number}`);
+              } catch (error) {
+                core.error(`❌ Failed to post comment to PR #${issue_number}: ${error.message}`);
+              }
             }
+
+            core.info("Autofix request workflow completed successfully");
