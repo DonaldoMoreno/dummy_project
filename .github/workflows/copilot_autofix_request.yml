@@ -72,24 +72,23 @@ jobs:
                 ? failedJobs.map(j => `- **${j.name}** (${j.conclusion}) — ${j.url}`).join("\n")
                 : "- (No se pudieron listar jobs fallidos; revisa el run.)";
 
-              const body =
-`${marker}
-@copilot
+              const body = `${marker}
+            @copilot
 
-Los checks de CI fallaron. Por favor:
-1) Identifica la **causa raíz** (no solo “workarounds”).
-2) Corrige el error, agrega/ajusta tests si aplica.
-3) Empuja commits **a esta misma rama del PR** para que CI vuelva a correr.
+            Los checks de CI fallaron. Por favor:
+            1) Identifica la **causa raíz** (no solo "workarounds").
+            2) Corrige el error, agrega/ajusta tests si aplica.
+            3) Empuja commits **a esta misma rama del PR** para que CI vuelva a correr.
 
-**Workflow run:** ${runUrl}
+            **Workflow run:** ${runUrl}
 
-**Jobs fallidos (links directos):**
-${failedList}
+            **Jobs fallidos (links directos):**
+            ${failedList}
 
-**Contexto adicional:**
-- No deshabilites checks ni ignores fallas.
-- Mantén cambios mínimos y enfocados.
-`;
+            **Contexto adicional:**
+            - No deshabilites checks ni ignores fallas.
+            - Mantén cambios mínimos y enfocados.
+            `;
 
               await github.rest.issues.createComment({
                 owner,
