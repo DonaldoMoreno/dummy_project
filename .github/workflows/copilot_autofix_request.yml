@@ -1,0 +1,101 @@
+name: Copilot Autofix Request
+
+on:
+  workflow_run:
+    workflows: ["Build"]   # Debe coincidir con: name: Build (en tu build.yml)
+    types: [completed]
+
+permissions:
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  request-copilot-fix:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+    steps:
+      - name: Post autofix request to PR(s)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+
+            const run = context.payload.workflow_run;
+            const runId = run.id;
+            const runUrl = run.html_url;
+
+            const prs = run.pull_requests || [];
+            if (prs.length === 0) {
+              core.info("No PRs associated with this workflow_run. Exiting.");
+              return;
+            }
+
+            // Traer jobs del workflow_run y resumir fallas
+            const jobsResp = await github.rest.actions.listJobsForWorkflowRun({
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+
+            const failedJobs = (jobsResp.data.jobs || [])
+              .filter(j => j.conclusion === "failure" || j.conclusion === "cancelled" || j.conclusion === "timed_out")
+              .map(j => ({
+                name: j.name,
+                conclusion: j.conclusion,
+                url: j.html_url
+              }));
+
+            const marker = `<!-- copilot-autofix:${runId} -->`;
+
+            for (const pr of prs) {
+              const issue_number = pr.number;
+
+              // Evitar comentar 2 veces por el mismo run
+              const comments = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number,
+                per_page: 100,
+              });
+
+              const already = comments.data.some(c => (c.body || "").includes(marker));
+              if (already) {
+                core.info(`PR #${issue_number}: comment already exists for run ${runId}. Skipping.`);
+                continue;
+              }
+
+              const failedList = failedJobs.length
+                ? failedJobs.map(j => `- **${j.name}** (${j.conclusion}) — ${j.url}`).join("\n")
+                : "- (No se pudieron listar jobs fallidos; revisa el run.)";
+
+              const body = `${marker}
+            @copilot
+
+            Los checks de CI fallaron. Por favor:
+            1) Identifica la **causa raíz** (no solo "workarounds").
+            2) Corrige el error, agrega/ajusta tests si aplica.
+            3) Empuja commits **a esta misma rama del PR** para que CI vuelva a correr.
+
+            **Workflow run:** ${runUrl}
+
+            **Jobs fallidos (links directos):**
+            ${failedList}
+
+            **Contexto adicional:**
+            - No deshabilites checks ni ignores fallas.
+            - Mantén cambios mínimos y enfocados.
+            `;
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+
+              core.info(`Posted @copilot autofix request to PR #${issue_number}`);
+            }
