@@ -11,9 +11,22 @@ Este proyecto demuestra un sistema automatizado que:
 
 ## 📖 Documentación
 
-- **[📘 Guía de Uso Completa](docs/COPILOT_AGENT_USAGE.md)** - Cómo configurar y usar el sistema
-- **[📝 Ejemplo del Flujo de Trabajo](docs/AUTOFIX_EXAMPLE.md)** - Demostración paso a paso
-- **[⚙️ Configuración de Workflows](docs/COPILOT_AGENT_USAGE.md#configuración-paso-a-paso)** - Setup detallado
+### 📚 Guías Principales
+
+- **[📋 Referencia Rápida](docs/QUICK_REFERENCE.md)** - ⚡ Respuesta directa a "¿Cómo llamar a Copilot desde un Action?"
+- **[📘 Guía de Uso Completa](docs/COPILOT_AGENT_USAGE.md)** - Tutorial detallado de configuración y personalización
+- **[📝 Ejemplo del Flujo de Trabajo](docs/AUTOFIX_EXAMPLE.md)** - Demostración paso a paso del sistema
+- **[🧪 Escenarios de Prueba](docs/TEST_SCENARIOS.md)** - Casos de prueba para validar el sistema
+
+### 🎯 Según tu Necesidad
+
+| Si necesitas... | Lee esto |
+|----------------|----------|
+| 🚀 **Respuesta rápida** | [Referencia Rápida](docs/QUICK_REFERENCE.md) |
+| 🔧 **Implementar el sistema** | [Guía de Uso - Configuración](docs/COPILOT_AGENT_USAGE.md#configuración-paso-a-paso) |
+| 🐛 **Resolver un problema** | [Guía de Uso - Troubleshooting](docs/COPILOT_AGENT_USAGE.md#solución-de-problemas) |
+| 📐 **Entender cómo funciona** | [Ejemplo del Flujo](docs/AUTOFIX_EXAMPLE.md) |
+| ✅ **Validar la implementación** | [Escenarios de Prueba](docs/TEST_SCENARIOS.md) |
 
 ## 🏗️ Arquitectura del Sistema
 
