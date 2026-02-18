@@ -9,6 +9,8 @@ Este proyecto demuestra un sistema automatizado que:
 - **Solicita automáticamente** a @copilot que revise y corrija el código
 - **Publica las correcciones** en el mismo PR
 
+📖 **[Ver ejemplo completo del flujo de trabajo](docs/AUTOFIX_EXAMPLE.md)**
+
 ## 🏗️ Arquitectura del Sistema
 
 ### 1. Build Workflow (`build.yml`)
