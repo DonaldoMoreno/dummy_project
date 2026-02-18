@@ -1,25 +1,19 @@
-cmake_minimum_required(VERSION 3.27)
-project(dummy_project_ai)
+cmake_minimum_required(VERSION 3.21)
+project(DummyLux VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 17)
+# C++20 standard
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# vcpkg integration
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "")
+endif()
 
 # Add source files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE HEADERS "src/*.h" "src/*.hpp")
+add_executable(DummyLux src/main.cpp)
 
-# Create executable or library
-if(SOURCES)
-    add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-else()
-    message(STATUS "No source files found in src/ directory")
-    # Create a minimal dummy target for testing the build
-    add_library(${PROJECT_NAME} INTERFACE)
-endif()
-
-# Optional: Add tests if they exist
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+# Include directories
+target_include_directories(DummyLux PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

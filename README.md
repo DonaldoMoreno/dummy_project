@@ -1,8 +1,8 @@
-# template_project_ai
+# DummyLux
 
 Sistema de revisión y corrección automática de código en PRs usando GitHub Copilot.
 
-## 🎯 Descripción
+## Requirements
 
 Este proyecto demuestra un sistema automatizado que:
 - **Detecta fallos** en Pull Requests cuando el CI falla
@@ -28,32 +28,30 @@ Este proyecto demuestra un sistema automatizado que:
 | 📐 **Entender cómo funciona** | [Ejemplo del Flujo](docs/AUTOFIX_EXAMPLE.md) |
 | ✅ **Validar la implementación** | [Escenarios de Prueba](docs/TEST_SCENARIOS.md) |
 
-## 🏗️ Arquitectura del Sistema
+### Using Ninja (Recommended)
 
-### 1. Build Workflow (`build.yml`)
-- Se ejecuta en cada push/PR a las ramas `main` y `develop`
-- Compila el proyecto en Windows y Ubuntu
-- Detecta errores de compilación, warnings, y fallos de tests
+```bash
+# Configure the project
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-### 2. Autofix Request Workflow (`copilot_autofix_request.yml`)
-- Se dispara automáticamente cuando el workflow de Build **falla**
-- Identifica los jobs fallidos y sus logs
-- Publica un comentario en el PR mencionando a @copilot con:
-  - Descripción del fallo
-  - Links directos a los logs de CI
-  - Instrucciones para corregir el problema
+# Build
+cmake --build build
 
-### 3. Flujo de Trabajo Completo
+# Run
+./build/DummyLux
+```
 
-```mermaid
-graph LR
-    A[Push a PR] --> B[Build CI]
-    B -->|✅ Éxito| C[PR aprobado]
-    B -->|❌ Fallo| D[Copilot Autofix Request]
-    D --> E[@copilot analiza logs]
-    E --> F[Copilot corrige código]
-    F --> G[Push a misma rama]
-    G --> B
+### Using Unix Makefiles
+
+```bash
+# Configure the project
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+# Build
+cmake --build build
+
+# Run
+./build/DummyLux
 ```
 
 ## 🚀 Inicio Rápido
@@ -75,62 +73,66 @@ graph LR
 
 3. **Lee la [Guía de Uso Completa](docs/COPILOT_AGENT_USAGE.md)** para más detalles
 
-### Para Desarrolladores
-
-1. **Crea una rama y haz cambios:**
-   ```bash
-   git checkout -b mi-feature
-   # Haz tus cambios...
-   git add .
-   git commit -m "Add new feature"
-   git push origin mi-feature
-   ```
-
-2. **Abre un Pull Request**
-   - El CI se ejecutará automáticamente
-   
-3. **Si el CI falla:**
-   - El workflow `copilot_autofix_request` publicará un comentario
-   - @copilot analizará los logs y encontrará la causa raíz
-   - @copilot corregirá el código y hará push a tu rama
-   - El CI volverá a ejecutarse automáticamente
-
-### Para Mantenedores
-
-Los workflows están configurados con los permisos necesarios:
-- `actions: read` - Leer información de workflows
-- `pull-requests: write` - Comentar en PRs
-- `issues: write` - Crear comentarios
-
-## 📝 Ejemplo de Código
-
-El proyecto incluye un ejemplo de calculadora en C++ (`src/main.cpp`) que demuestra:
-- Estructura básica de clases
-- Manejo de errores (división por cero)
-- Entrada/salida estándar
-
-## 🔧 Construcción Local
-
-### Requisitos
-- CMake 3.27+
-- Ninja
-- Compilador C++ con soporte para C++17
-
-### Compilar en Linux/macOS
 ```bash
-cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -B build
-cmake --build build --config Release
-./build/dummy_project_ai
+# Set VCPKG_ROOT environment variable
+export VCPKG_ROOT=/path/to/vcpkg
+
+# Configure with vcpkg toolchain
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+
+# Build
+cmake --build build
+
+# Run
+./build/DummyLux
 ```
 
-### Compilar en Windows
-```bash
-cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -B build
+## Building on Windows
+
+### Using MSVC with Ninja
+
+```powershell
+# Configure the project
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+# Build
 cmake --build build --config Release
-build\dummy_project_ai.exe
+
+# Run
+.\build\DummyLux.exe
 ```
 
-## 📚 Configuración de Workflows
+### Using MSVC with Visual Studio Generator
+
+```powershell
+# Configure the project
+cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
+
+# Build
+cmake --build build --config Release
+
+# Run
+.\build\Release\DummyLux.exe
+```
+
+### With vcpkg on Windows
+
+If you have vcpkg installed:
+
+```powershell
+# Using environment variable (if VCPKG_ROOT is set)
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+
+# Build
+cmake --build build --config Release
+
+# Run
+.\build\DummyLux.exe
+```
+
+## Expected Output
 
 ### build.yml
 - **Ubicación:** `.github/workflows/build.yml`
@@ -169,15 +171,26 @@ Por favor:
 
 **[Ver guía completa de configuración →](docs/COPILOT_AGENT_USAGE.md#configuración-paso-a-paso)**
 
-## 🤝 Contribuir
+## Project Structure
 
-1. Fork el repositorio
-2. Crea una rama de feature (`git checkout -b feature/amazing-feature`)
-3. Commit tus cambios (`git commit -m 'Add amazing feature'`)
-4. Push a la rama (`git push origin feature/amazing-feature`)
-5. Abre un Pull Request
-6. ¡Deja que el sistema automatizado te ayude si algo falla!
+```
+.
+├── src/
+│   └── main.cpp          # Main application entry point
+├── CMakeLists.txt        # CMake build configuration
+├── vcpkg.json            # vcpkg manifest for dependencies
+├── .github/
+│   └── workflows/
+│       └── build.yml     # CI/CD configuration
+└── README.md             # This file
+```
 
-## 📄 Licencia
+## Development
 
-Este es un proyecto de ejemplo para demostrar capacidades de automatización con GitHub Actions y Copilot.
+This is Phase 01 of the DummyLux project, establishing the basic infrastructure:
+- C++20 executable
+- CMake build system
+- vcpkg manifest mode (for future dependencies)
+- Cross-platform CI (Windows & Ubuntu)
+
+Future phases will add OpenGL rendering, ImGui, and other features.

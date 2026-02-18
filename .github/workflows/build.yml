@@ -21,11 +21,19 @@ jobs:
     - name: Setup Ninja
       uses: seanmiddleditch/gha-setup-ninja@master
     
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
+    
     - name: Configure
-      run: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -B build
+      run: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" -B build
     
     - name: Build Release
       run: cmake --build build --config Release
+    
+    - name: Test executable
+      run: .\build\DummyLux.exe
 
   build-ubuntu:
     runs-on: ubuntu-latest
@@ -36,8 +44,16 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
     
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
+    
     - name: Configure
-      run: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -B build
+      run: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" -B build
     
     - name: Build Release
       run: cmake --build build --config Release
+    
+    - name: Test executable
+      run: ./build/DummyLux
